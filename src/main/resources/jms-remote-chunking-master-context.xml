@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:int="http://www.springframework.org/schema/integration"
+	xmlns:int-jms="http://www.springframework.org/schema/integration/jms"
+	xmlns:batch="http://www.springframework.org/schema/batch"
+	xmlns:jms="http://www.springframework.org/schema/jms"
+	xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:aop="http://www.springframework.org/schema/aop"
+	xsi:schemaLocation="http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-3.1.xsd
+		http://www.springframework.org/schema/jms http://www.springframework.org/schema/jms/spring-jms-3.1.xsd
+		http://www.springframework.org/schema/integration http://www.springframework.org/schema/integration/spring-integration-2.1.xsd
+		http://www.springframework.org/schema/integration/jms http://www.springframework.org/schema/integration/jms/spring-integration-jms-2.1.xsd
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/batch http://www.springframework.org/schema/batch/spring-batch-2.1.xsd
+		http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-3.1.xsd">
+
+	<import resource="classpath:/infrastructure-ctx.xml" />
+	<import resource="classpath:/jms-infrastructure-ctx.xml" />
+
+	<batch:job id="jmsRemoteChunkingJob">
+		<batch:step id="jmsRemoteChunkingStep">
+			<batch:tasklet>
+				<batch:chunk reader="reader" writer="writer" commit-interval="10" />
+			</batch:tasklet>
+		</batch:step>
+	</batch:job>
+	
+	<bean id="reader" class="org.springframework.batch.item.database.JdbcCursorItemReader">
+		<property name="dataSource" ref="dataSource" />
+		<property name="sql" value="select id,account_id,amount,processed from transfer_request" />
+		<property name="saveState" value="false" />
+		<property name="rowMapper">
+			<bean class="com.zenika.batch.TransferRequestRowMapper" />
+		</property>
+	</bean>		
+	
+	<bean id="writer" class="com.zenika.batch.NoOpItemWriter" />
+	
+	<bean id="chunkWriter" class="org.springframework.batch.integration.chunk.ChunkMessageChannelItemWriter">
+		<property name="messagingOperations" ref="messagingGateway" />
+		<property name="replyChannel" ref="replies" />
+		<property name="maxWaitTimeouts" value="10" />
+		<property name="throttleLimit" value="3" />
+	</bean>
+
+	<bean id="messagingGateway" class="org.springframework.integration.core.MessagingTemplate">
+		<property name="defaultChannel" ref="requests" />
+		<property name="receiveTimeout" value="1000" />
+	</bean>
+
+	<int-jms:outbound-channel-adapter connection-factory="connectionFactory" channel="requests"
+		destination-name="requests" />
+	<int:channel id="requests" />
+	<int:channel id="incoming" />
+
+	<int:transformer input-channel="incoming" output-channel="replies" ref="headerExtractor"
+		method="extract" />
+
+	<bean id="headerExtractor" class="org.springframework.batch.integration.chunk.JmsRedeliveredExtractor" />
+	
+	<bean class="org.springframework.beans.factory.config.CustomScopeConfigurer">
+		<property name="scopes">
+			<map>
+				<entry key="thread">
+					<bean class="org.springframework.context.support.SimpleThreadScope" />
+				</entry>
+			</map>
+		</property>
+	</bean>
+
+	<int:channel id="replies" scope="thread">
+		<int:queue />
+		<int:interceptors>
+			<bean id="pollerInterceptor" class="org.springframework.batch.integration.chunk.MessageSourcePollerInterceptor">
+				<property name="messageSource">
+					<bean class="org.springframework.integration.jms.JmsDestinationPollingSource">
+						<constructor-arg>
+							<bean class="org.springframework.jms.core.JmsTemplate">
+								<property name="connectionFactory" ref="connectionFactory" />
+								<property name="defaultDestinationName" value="replies" />
+								<property name="receiveTimeout" value="100" />
+							</bean>
+						</constructor-arg>
+					</bean>
+				</property>
+				<property name="channel" ref="incoming" />
+			</bean>
+		</int:interceptors>
+	</int:channel>
+	
+	<bean id="chunkHandler" class="org.springframework.batch.integration.chunk.RemoteChunkHandlerFactoryBean" lazy-init="false">
+		<property name="chunkWriter" ref="chunkWriter" />
+		<property name="step" ref="jmsRemoteChunkingStep" />
+	</bean>
+
+</beans>

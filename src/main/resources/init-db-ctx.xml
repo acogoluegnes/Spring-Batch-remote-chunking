@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:jdbc="http://www.springframework.org/schema/jdbc"
+	xmlns:batch="http://www.springframework.org/schema/batch"
+	xsi:schemaLocation="http://www.springframework.org/schema/jdbc http://www.springframework.org/schema/jdbc/spring-jdbc-3.1.xsd
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/batch http://www.springframework.org/schema/batch/spring-batch-2.1.xsd">
+	
+	<beans profile="dev">
+		<jdbc:initialize-database data-source="dataSource">
+			<jdbc:script location="classpath:/business-schema-drop-create.sql" />
+			<jdbc:script
+				location="classpath:/org/springframework/batch/core/schema-drop-h2.sql" />
+			<jdbc:script
+				location="classpath:/org/springframework/batch/core/schema-h2.sql" />
+			<jdbc:script
+				location="classpath:/org/springframework/integration/jdbc/schema-drop-h2.sql" />
+			<jdbc:script
+				location="classpath:/org/springframework/integration/jdbc/schema-h2.sql" />
+		</jdbc:initialize-database>
+	</beans>
+
+	<beans profile="prod">
+		<jdbc:initialize-database data-source="dataSource"
+			ignore-failures="DROPS">
+			<jdbc:script location="classpath:/business-schema-drop-create.sql" />
+			<jdbc:script
+				location="classpath:/org/springframework/batch/core/schema-drop-postgresql.sql" />
+			<jdbc:script
+				location="classpath:/org/springframework/batch/core/schema-postgresql.sql" />
+			<jdbc:script
+				location="classpath:/org/springframework/integration/jdbc/schema-drop-postgresql.sql" />
+			<jdbc:script
+				location="classpath:/org/springframework/integration/jdbc/schema-postgresql.sql" />
+		</jdbc:initialize-database>
+	</beans>
+
+</beans>

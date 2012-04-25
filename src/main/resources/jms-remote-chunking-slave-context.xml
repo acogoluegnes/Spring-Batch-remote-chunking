@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:int="http://www.springframework.org/schema/integration"
+	xmlns:int-jms="http://www.springframework.org/schema/integration/jms"
+	xmlns:batch="http://www.springframework.org/schema/batch"
+	xmlns:jms="http://www.springframework.org/schema/jms"
+	xsi:schemaLocation="http://www.springframework.org/schema/jms http://www.springframework.org/schema/jms/spring-jms-3.1.xsd
+		http://www.springframework.org/schema/integration http://www.springframework.org/schema/integration/spring-integration-2.1.xsd
+		http://www.springframework.org/schema/integration/jms http://www.springframework.org/schema/integration/jms/spring-integration-jms-2.1.xsd
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/batch http://www.springframework.org/schema/batch/spring-batch-2.1.xsd">
+
+	<import resource="classpath:/infrastructure-ctx.xml" />
+	<import resource="classpath:/jms-infrastructure-ctx.xml" />
+
+	<batch:job id="jmsRemoteChunkingSlaveJob">
+		<batch:step id="jmsRemoteChunkingSlaveStep">
+			<batch:tasklet>
+				<batch:chunk reader="reader" writer="writer" commit-interval="10" />
+			</batch:tasklet>
+		</batch:step>
+	</batch:job>
+	
+	<bean id="reader" class="com.zenika.batch.NoOpItemReader" />
+	
+	<bean id="writer" class="com.zenika.batch.TransferRequestFileItemWriter">
+		<property name="outputDirectory" value="./jms-remote-chunking-output" />
+	</bean>
+	
+	<jms:listener-container connection-factory="connectionFactory" transaction-manager="transactionManager"
+		acknowledge="transacted" concurrency="3">
+		<jms:listener destination="requests" response-destination="replies" ref="chunkHandler" method="handleChunk" />
+	</jms:listener-container>
+
+	<bean id="chunkHandler" class="org.springframework.batch.integration.chunk.RemoteChunkHandlerFactoryBean">
+		<property name="chunkWriter" ref="chunkWriter" />
+		<property name="step" ref="jmsRemoteChunkingSlaveStep" />
+	</bean>
+		
+		
+	<int:channel id="requests" />
+	<int:channel id="replies">
+		<int:queue />
+	</int:channel>
+	
+	<bean id="chunkWriter" class="org.springframework.batch.integration.chunk.ChunkMessageChannelItemWriter">
+		<property name="messagingOperations" ref="messagingGateway" />
+		<property name="replyChannel" ref="replies" />
+		<property name="maxWaitTimeouts" value="10" />
+	</bean>
+
+	<bean id="messagingGateway" class="org.springframework.integration.core.MessagingTemplate">
+		<property name="defaultChannel" ref="requests" />
+		<property name="receiveTimeout" value="1000" />
+	</bean>
+
+</beans>

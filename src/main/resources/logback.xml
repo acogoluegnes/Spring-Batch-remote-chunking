@@ -6,7 +6,7 @@
 		</encoder>
 	</appender>
 	
-	<logger name="org.springframework" level="WARN" />
+	<logger name="org.springframework.batch.integration" level="DEBUG" />
 	
 	<logger name="com.zenika" level="DEBUG" />
 

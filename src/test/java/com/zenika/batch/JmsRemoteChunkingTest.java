@@ -43,7 +43,7 @@ import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 	"classpath:/jms-remote-chunking-master-context.xml",
 	"classpath:/init-db-ctx.xml"
 })
-@ActiveProfiles("prod")
+@ActiveProfiles("env")
 public class JmsRemoteChunkingTest {
 	
 	private static final int NB_ROWS = 50;

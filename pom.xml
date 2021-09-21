@@ -193,7 +193,7 @@
 	</dependencies>
 
 	<properties>
-		<spring.batch.version>2.1.8.RELEASE</spring.batch.version>
+		<spring.batch.version>4.0.0.RELEASE</spring.batch.version>
 		<spring.version>3.1.1.RELEASE</spring.version>
 		<spring.batch.integration.version>1.2.1.RELEASE</spring.batch.integration.version>
 		<activemq.version>5.5.1</activemq.version>

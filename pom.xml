@@ -202,7 +202,7 @@
 		<commons.io.version>2.2</commons.io.version>
 		<postgresql.driver.version>9.1-901.jdbc4</postgresql.driver.version>
 		<slf4j.version>1.6.4</slf4j.version>
-		<logback.version>1.0.0</logback.version>
+		<logback.version>1.2.0</logback.version>
 		<tomcat.jdbc.version>7.0.27</tomcat.jdbc.version>
 		<guava.version>11.0.2</guava.version>
 		<junit.version>4.10</junit.version>
